@@ -1,8 +1,17 @@
 // Importing the dependencies
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { uploadFileToIPFS } from "../utils/pinata";
 import { ethers } from "ethers";
 import { ToastContainer, toast } from "react-toastify";
+import ABI from '../utils/abi.json'
+import ADDRESS from '../utils/address.json'
+
+let connect : any
+if(typeof window !=='undefined'){
+    connect = (window as any).ethereum
+}
+
+
 
 // The AddNotaryModal component is used to add a notary to the marketplace
 const AddNotaryModal = () => {
@@ -14,7 +23,25 @@ const AddNotaryModal = () => {
   const [fileURIhash, setFileURIhash] = useState("");
   // The loading state is used to display a loading message
   const [loading, setLoading] = useState(false);
+  // connected user's account
+  const [account, setAccount] = useState<string>()
 
+   // wallet connection
+  //  const connectWallet =async function(){
+  //   try {
+  //       if(connect){
+  //           const connector = await connect.request({method : 'eth_requestAccounts'})
+  //           setAccount(connector[0]) 
+  //       }
+  //   } catch (error) {
+  //       console.log(error);
+  //   }
+  // }
+
+  	
+  //   useEffect(()=>{
+  //     connectWallet()
+  //   },[account])
 
   // Clear the input fields after the notary is added to the marketplace
   const clearForm = () => {
@@ -43,19 +70,17 @@ const AddNotaryModal = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      if (!(notaryFileURI && notaryDescription)) {
+      if (!(notaryFileURI && notaryDescription && fileURIhash)) {
         throw new Error("Please fill all fields.");
       }
-      if (!notarizeDocument) {
-        throw new Error("Error notarizing file.");
+      if (!connect) {
+        throw new Error("Please connect your wallet.");
       }
 
-      //   if (notarizeDocument) {
-      // Call the function to notarize the document
-      await notarizeDocument({
-        functionName: "notarizeDocument",
-        args: [fileURIhash, debouncedNotaryFileURI, debouncedNotaryDescription],
-      });
+      const provider = new ethers.BrowserProvider(connect)
+      const signer = await provider.getSigner()
+      const contract = new ethers.Contract(ADDRESS,ABI,signer)
+      await contract.notarizeDocument(fileURIhash,notaryFileURI,notaryDescription)
       // Display a success message
       toast.success("Notary added successfully!");
       // Clear the form
